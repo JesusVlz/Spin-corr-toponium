@@ -25,7 +25,7 @@ def add_text_labels(pad, title="", info="#bf{Parton Level}"):
     latex.SetTextFont(42)
     latex.SetTextSize(0.05)
     latex.DrawLatex(0.18, 0.92, title)
-    latex.SetTextAlign(31) 
+    latex.SetTextAlign(31)
     latex.DrawLatex(0.345, 0.92, info)
 
 def create_ratio_graph(h_mc, h_data_graph):
@@ -50,14 +50,23 @@ def create_ratio_graph(h_mc, h_data_graph):
 # COMMENT OUT mc4_file IN THE ARGUMENTS IF USING ONLY 3 MCs. ALSO COMMENT OUT mc3_file IF USING ONLY 2.
 def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_limits, ratio_limits):
     mc_name, data_file_name, data_path, xtitle, ytitle = config
-    
+
     h1 = mc1_file.Get(mc_name)
     h2 = mc2_file.Get(mc_name)
-    h3 = mc3_file.Get(mc_name) # COMMENT OUT IF USING ONLY 2 MCs
+    h3 = mc3_file.Get(mc_name)  # COMMENT OUT IF USING ONLY 2 MCs
     #h4 = mc4_file.Get(mc_name) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
-    
+
+    # Fail loud instead of segfaulting on a wrong histogram/data path.
+    if not h1 or not h2 or not h3:
+        raise RuntimeError(f"Missing MC histogram '{mc_name}' in one of the input files.")
+
     f_data = ROOT.TFile.Open(data_file_name)
-    h_data_graph = f_data.Get(data_path).Clone()
+    if not f_data or f_data.IsZombie():
+        raise RuntimeError(f"Cannot open data file: {data_file_name}")
+    obj = f_data.Get(data_path)
+    if not obj:
+        raise RuntimeError(f"Data path '{data_path}' not found in {data_file_name}")
+    h_data_graph = obj.Clone()
     f_data.Close()
 
     n_bins = h1.GetNbinsX()
@@ -66,13 +75,13 @@ def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_
 
     c = ROOT.TCanvas(f"c_{mc_name}", "", 800, 800)
     left_margin = 0.16
-    
+
     pad1 = ROOT.TPad("p1", "", 0, 0.3, 1, 1)
     pad1.SetBottomMargin(0.025)
     pad1.SetLeftMargin(left_margin)
     pad1.SetRightMargin(0.05)
     pad1.Draw()
-    
+
     pad2 = ROOT.TPad("p2", "", 0, 0, 1, 0.3)
     pad2.SetTopMargin(0.02)
     pad2.SetBottomMargin(0.35)
@@ -93,28 +102,28 @@ def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_
     h_frame.Draw("AXIS")
 
     h1.SetLineColor(ROOT.kGreen); h1.SetLineWidth(2)
-    h2.SetLineColor(ROOT.kBlue); h2.SetLineWidth(2); h2.SetLineStyle(2);
-    
+    h2.SetLineColor(ROOT.kBlue); h2.SetLineWidth(2); h2.SetLineStyle(2)
+
     # MC3 CONFIGURATION (COMMENT OUT IF USING ONLY 2 MCs)
-    h3.SetLineColor(ROOT.kRed); h3.SetLineWidth(2) 
-    
+    h3.SetLineColor(ROOT.kRed); h3.SetLineWidth(2)
+
     # MC4 CONFIGURATION (COMMENT OUT IF USING ONLY 2 OR 3 MCs)
-    #h4.SetLineColor(ROOT.kMagenta); h4.SetLineWidth(2) 
+    #h4.SetLineColor(ROOT.kMagenta); h4.SetLineWidth(2)
 
     h1.Draw("HIST E SAME")
     h2.Draw("HIST E SAME")
-    h3.Draw("HIST E SAME") # COMMENT OUT IF USING ONLY 2 MCs
+    h3.Draw("HIST E SAME")  # COMMENT OUT IF USING ONLY 2 MCs
     #h4.Draw("HIST E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
-    
+
     h_data_graph.SetMarkerStyle(20); h_data_graph.SetLineColor(ROOT.kBlack); h_data_graph.SetMarkerSize(1.2)
     h_data_graph.Draw("PE SAME")
 
     # Legend (adjusted to fit 4 MCs + Data)
-    leg = ROOT.TLegend(0.22, 0.68, 0.45, 0.88) 
+    leg = ROOT.TLegend(0.18, 0.68, 0.41, 0.88)
     leg.AddEntry(h_data_graph, labels['data'], "ep")
     leg.AddEntry(h1, f"{labels['mc1']} ", "l")
     leg.AddEntry(h2, f"{labels['mc2']} ", "l")
-    leg.AddEntry(h3, f"{labels['mc3']} ", "l") # COMMENT OUT IF USING ONLY 2 MCs
+    leg.AddEntry(h3, f"{labels['mc3']} ", "l")  # COMMENT OUT IF USING ONLY 2 MCs
     #leg.AddEntry(h4, f"{labels['mc4']} (#mu={h4.GetMean():.2f})", "l") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
     leg.Draw()
     add_text_labels(pad1)
@@ -138,23 +147,23 @@ def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_
 
     ratio1 = create_ratio_graph(h1, h_data_graph)
     ratio2 = create_ratio_graph(h2, h_data_graph)
-    ratio3 = create_ratio_graph(h3, h_data_graph) # COMMENT OUT IF USING ONLY 2 MCs
+    ratio3 = create_ratio_graph(h3, h_data_graph)  # COMMENT OUT IF USING ONLY 2 MCs
     #ratio4 = create_ratio_graph(h4, h_data_graph) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
 
-    ratio1.SetMarkerColor(ROOT.kGreen); ratio1.SetLineColor(ROOT.kGreen); ratio1.SetMarkerStyle(25); ratio1.SetMarkerSize(1.5) 
+    ratio1.SetMarkerColor(ROOT.kGreen); ratio1.SetLineColor(ROOT.kGreen); ratio1.SetMarkerStyle(25); ratio1.SetMarkerSize(1.5)
     ratio2.SetMarkerColor(ROOT.kBlue); ratio2.SetLineColor(ROOT.kBlue); ratio2.SetMarkerStyle(26); ratio2.SetMarkerSize(1.5)
-    
+
     # MC3 RATIO (COMMENT OUT IF USING ONLY 2 MCs)
     ratio3.SetMarkerColor(ROOT.kRed); ratio3.SetLineColor(ROOT.kRed); ratio3.SetMarkerStyle(24); ratio3.SetMarkerSize(1.5)
 
     # MC4 RATIO (COMMENT OUT IF USING ONLY 2 OR 3 MCs)
-    #ratio4.SetMarkerColor(ROOT.kMagenta); ratio4.SetLineColor(ROOT.kMagenta); ratio4.SetMarkerStyle(23); ratio4.SetMarkerSize(1.5) # Filled diamond
+    #ratio4.SetMarkerColor(ROOT.kMagenta); ratio4.SetLineColor(ROOT.kMagenta); ratio4.SetMarkerStyle(23); ratio4.SetMarkerSize(1.5)
 
     ratio1.Draw("PE SAME")
     ratio2.Draw("PE E SAME")
-    ratio3.Draw("PE E SAME") # COMMENT OUT IF USING ONLY 2 MCs
+    ratio3.Draw("PE E SAME")  # COMMENT OUT IF USING ONLY 2 MCs
     #ratio4.Draw("HIST E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
-    
+
     line = ROOT.TLine(x_min, 1, x_max, 1)
     line.SetLineColor(ROOT.kBlack); line.SetLineStyle(2); line.Draw()
 
@@ -162,10 +171,10 @@ def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--f1', default='/home/jesusavc/phd/topponium/outputs/spin_corr_topponium_res_500k.root')
-    parser.add_argument('--f2', default='/home/jesusavc/phd/topponium/outputs/spin_corr_topponium_full_500k.root')
-    parser.add_argument('--f3', default='/home/jesusavc/phd/topponium/outputs/spin_corr_ttbar_500k.root') # COMMENT OUT IF USING ONLY 2 MCs
-   # parser.add_argument('--f4', default='/home/jesusavc/hep-software/Delphes-3.5.0/spin_corr_ttbar_madspin_test.root') # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    parser.add_argument('--f1', default='outputs/spin_corr_topponium_res_500k.root')
+    parser.add_argument('--f2', default='outputs/spin_corr_topponium_full_500k.root')
+    parser.add_argument('--f3', default='outputs/spin_corr_ttbar_500k.root')  # COMMENT OUT IF USING ONLY 2 MCs
+   # parser.add_argument('--f4', default='outputs/spin_corr_ttbar_madspin_test.root') # COMMENT OUT IF USING ONLY 2 OR 3 MCs
     parser.add_argument('--out', default='figures')
     args = parser.parse_args()
 
@@ -174,41 +183,93 @@ def main():
 
     f1 = ROOT.TFile.Open(args.f1)
     f2 = ROOT.TFile.Open(args.f2)
-    f3 = ROOT.TFile.Open(args.f3) # COMMENT OUT IF USING ONLY 2 MCs
+    f3 = ROOT.TFile.Open(args.f3)  # COMMENT OUT IF USING ONLY 2 MCs
     #f4 = ROOT.TFile.Open(args.f4) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
 
+    # NOTE: limits keyed by histogram name. Anything not listed falls back to the
+    # default below. The C_nn / C_rr and n/r-axis ranges are PLACEHOLDERS -- tune
+    # them after the first run. They are NOT the same as the k-axis ranges.
     y_limit_map = {
-        "h_cos_opening_angle": (0.0, 1.0),
-        "h_cos_opening_angle_lab": (0.0, 1.8),
-        "h_dphi": (0.18, 0.7),
-        "h_c1c2": (0.0, 1.5),
-        "h_lep_costheta_minus": (0.44, 0.59),
-        "h_lep_costheta_plus": (0.44, 0.59)
-    }
-    
-    ratio_limit_map = {
-        "h_cos_opening_angle": (0.4, 3.8), 
-        "h_cos_opening_angle_lab": (0.4, 3.7), 
-        "h_dphi": (0.4, 3.7),
-        "h_c1c2": (0.45,3.0),
-        "h_lep_costheta_minus": (0.90, 1.09),
-        "h_lep_costheta_plus": (0.90, 1.09)
+        "h_cos_opening_angle":      (0.0, 1.0),
+        "h_cos_opening_angle_lab":  (0.0, 1.8),
+        "h_dphi":                   (0.18, 0.7),
+        # --- diagonal spin-correlation products ---
+        "h_c_kk":                   (0.0, 1.5),
+        "h_c_nn":                   (0.0, 1.5),   # TUNE: C_nn > 0, larger than C_kk at LHC
+        "h_c_rr":                   (0.0, 1.5),   # TUNE: C_rr sign/shape differs from C_kk
+        # --- k-axis 1D cosines ---
+        "h_lep_costheta_plus":      (0.44, 0.59),
+        "h_lep_costheta_minus":     (0.44, 0.59),
+        # --- n-axis 1D cosines (B_n ~ 0 -> ~flat at 0.5) ---
+        "h_lep_costheta_n_plus":    (0.44, 0.59),  # TUNE
+        "h_lep_costheta_n_minus":   (0.44, 0.59),  # TUNE
+        # --- r-axis 1D cosines (B_r ~ 0 -> ~flat at 0.5) ---
+        "h_lep_costheta_r_plus":    (0.44, 0.59),  # TUNE
+        "h_lep_costheta_r_minus":   (0.44, 0.59),  # TUNE
     }
 
+    ratio_limit_map = {
+        "h_cos_opening_angle":      (0.0, 5.3),
+        "h_cos_opening_angle_lab":  (0.0, 5.1),
+        "h_dphi":                   (0.4, 3.7),
+        "h_c_kk":                   (0.25, 4.0),
+        "h_c_nn":                   (0.25, 4.0),   # TUNE
+        "h_c_rr":                   (0.0, 5.2),   # TUNE
+        "h_lep_costheta_plus":      (0.90, 1.09),
+        "h_lep_costheta_minus":     (0.90, 1.09),
+        "h_lep_costheta_n_plus":    (0.90, 1.09),  # TUNE
+        "h_lep_costheta_n_minus":   (0.90, 1.09),  # TUNE
+        "h_lep_costheta_r_plus":    (0.90, 1.09),  # TUNE
+        "h_lep_costheta_r_minus":   (0.90, 1.09),  # TUNE
+    }
+
+    # config = (mc_hist_name, data_file, data_graph_path, xtitle, ytitle)
+    #
+    # WARNING: the n/r-axis data filenames below are EXTRAPOLATED from the k-axis
+    # naming convention. HEPData export filenames are not guaranteed to follow it.
+    # Run `ls data/` and correct any mismatch before trusting these plots.
     configs = [
-        ("h_cos_opening_angle", "data/HEPData-ins1742786-v1-cosvarphi.root", "cosvarphi/Graph1D_y1", "cos#phi", "1/#sigma d#sigma/dcos#phi"),
-        ("h_cos_opening_angle_lab", "data/HEPData-ins1742786-v1-cosvarphi_{mathrm{lab}}.root", "cosvarphi_{mathrm{lab}}/Graph1D_y1", "cos#phi_{lab}", "1/#sigma d#sigma/dcos#phi_{lab}"),
-        ("h_dphi", "data/HEPData-ins1742786-v1-_Deltaphi_{ellell}_.root", "|Deltaphi_{ellell}|/Graph1D_y1", "|#Delta#phi_{ll}|", "1/#sigma d#sigma/d#Delta#phi"),
-        ("h_c_kk", "data/HEPData-ins1742786-v1-costheta_{1}^{k}costheta_{2}^{k}.root", "costheta_{1}^{k}costheta_{2}^{k}/Graph1D_y1", "cos#theta_{1}^{k}cos#theta_{2}^{k}", "1/#sigma d#sigma/dcos#theta_{1}^{k}cos#theta_{2}^{k}"),
-        ("h_lep_costheta_minus", "data/HEPData-ins1742786-v1-costheta_{2}^{k}.root", "costheta_{2}^{k}/Graph1D_y1", "cos(#theta_{2}^{k})", "1/#sigma d#sigma/dcos(#theta_{2}^{k})"),
-        ("h_lep_costheta_plus", "data/HEPData-ins1742786-v1-costheta_{1}^{k}.root", "costheta_{1}^{k}/Graph1D_y1", "cos(#theta_{1}^{k})", "1/#sigma d#sigma/dcos(#theta_{1}^{k})")
+        ("h_cos_opening_angle",     "data/HEPData-ins1742786-v1-cosvarphi.root",
+         "cosvarphi/Graph1D_y1", "cos#phi", "1/#sigma d#sigma/dcos#phi"),
+        ("h_cos_opening_angle_lab", "data/HEPData-ins1742786-v1-cosvarphi_{mathrm{lab}}.root",
+         "cosvarphi_{mathrm{lab}}/Graph1D_y1", "cos#phi_{lab}", "1/#sigma d#sigma/dcos#phi_{lab}"),
+        ("h_dphi",                  "data/HEPData-ins1742786-v1-_Deltaphi_{ellell}_.root",
+         "|Deltaphi_{ellell}|/Graph1D_y1", "|#Delta#phi_{ll}|", "1/#sigma d#sigma/d#Delta#phi"),
+
+        # ---- diagonal spin-correlation products ----
+        ("h_c_kk",                  "data/HEPData-ins1742786-v1-costheta_{1}^{k}costheta_{2}^{k}.root",
+         "costheta_{1}^{k}costheta_{2}^{k}/Graph1D_y1",
+         "cos#theta_{1}^{k}cos#theta_{2}^{k}", "1/#sigma d#sigma/dcos#theta_{1}^{k}cos#theta_{2}^{k}"),
+        ("h_c_nn",                  "data/HEPData-ins1742786-v1-costheta_{1}^{n}costheta_{2}^{n}.root",
+         "costheta_{1}^{n}costheta_{2}^{n}/Graph1D_y1",
+         "cos#theta_{1}^{n}cos#theta_{2}^{n}", "1/#sigma d#sigma/dcos#theta_{1}^{n}cos#theta_{2}^{n}"),
+        ("h_c_rr",                  "data/HEPData-ins1742786-v1-costheta_{1}^{r}costheta_{2}^{r}.root",
+         "costheta_{1}^{r}costheta_{2}^{r}/Graph1D_y1",
+         "cos#theta_{1}^{r}cos#theta_{2}^{r}", "1/#sigma d#sigma/dcos#theta_{1}^{r}cos#theta_{2}^{r}"),
+
+        # ---- k-axis 1D cosines ----
+        ("h_lep_costheta_plus",     "data/HEPData-ins1742786-v1-costheta_{1}^{k}.root",
+         "costheta_{1}^{k}/Graph1D_y1", "cos(#theta_{1}^{k})", "1/#sigma d#sigma/dcos(#theta_{1}^{k})"),
+        ("h_lep_costheta_minus",    "data/HEPData-ins1742786-v1-costheta_{2}^{k}.root",
+         "costheta_{2}^{k}/Graph1D_y1", "cos(#theta_{2}^{k})", "1/#sigma d#sigma/dcos(#theta_{2}^{k})"),
+
+        # ---- n-axis 1D cosines ----
+        ("h_lep_costheta_n_plus",   "data/HEPData-ins1742786-v1-costheta_{1}^{n}.root",
+         "costheta_{1}^{n}/Graph1D_y1", "cos(#theta_{1}^{n})", "1/#sigma d#sigma/dcos(#theta_{1}^{n})"),
+        ("h_lep_costheta_n_minus",  "data/HEPData-ins1742786-v1-costheta_{2}^{n}.root",
+         "costheta_{2}^{n}/Graph1D_y1", "cos(#theta_{2}^{n})", "1/#sigma d#sigma/dcos(#theta_{2}^{n})"),
+
+        # ---- r-axis 1D cosines ----
+        ("h_lep_costheta_r_plus",   "data/HEPData-ins1742786-v1-costheta_{1}^{r}.root",
+         "costheta_{1}^{r}/Graph1D_y1", "cos(#theta_{1}^{r})", "1/#sigma d#sigma/dcos(#theta_{1}^{r})"),
+        ("h_lep_costheta_r_minus",  "data/HEPData-ins1742786-v1-costheta_{2}^{r}.root",
+         "costheta_{2}^{r}/Graph1D_y1", "cos(#theta_{2}^{r})", "1/#sigma d#sigma/dcos(#theta_{2}^{r})"),
     ]
 
-    # Added labels for MC3 and MC4 (COMMENT OUT THE ONES YOU DON'T USE)
     labels = {
-        'mc1': '#bf{Simplified #eta_{t}-restrict}', 
-        'mc2': '#bf{Simplified #eta_{t}-full}', 
-        'mc3': '#bf{pp #rightarrow t#bar{t} (SM)}',      # COMMENT OUT IF USING ONLY 2 MCs
+        'mc1': '#bf{Simplified #eta_{t}-restrict}',
+        'mc2': '#bf{Simplified #eta_{t}-full}',
+        'mc3': '#bf{pp #rightarrow t#bar{t} (SM)}',  # COMMENT OUT IF USING ONLY 2 MCs
         'data': '#bf{CMS Data}'
     }
 
@@ -216,12 +277,12 @@ def main():
         name = config[0]
         y_lim = y_limit_map.get(name, (0.0, 1.8))
         r_lim = ratio_limit_map.get(name, (0.4, 1.6))
-        
+
         # REMOVE f4 FROM HERE IF USING ONLY 3. REMOVE f3 AND f4 IF USING ONLY 2.
-        plot_comparison(f1, f2, f3, config, labels, args.out, y_lim, r_lim) 
+        plot_comparison(f1, f2, f3, config, labels, args.out, y_lim, r_lim)
 
     f1.Close(); f2.Close()
-    f3.Close() # COMMENT OUT IF USING ONLY 2 MCs
+    f3.Close()  # COMMENT OUT IF USING ONLY 2 MCs
     #f4.Close() # COMMENT OUT IF USING ONLY 2 OR 3 MCs
 
 if __name__ == "__main__":
