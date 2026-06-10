@@ -9,10 +9,10 @@ The flow is: generated events (LHE)→ Delphes → `spin_corr.C` (fills histogra
 ```
 .
 ├── analysis/spin_corr.C        # ROOT/Delphes macro: event loop → spin-correlation histograms
-├── plotting.py        # PyROOT: MC-vs-data comparison plots
-├── figures/             # output PDFs
-├── madgraph/             # sample card generation
-└── refs/              # reference papers (see below)
+├── plotting.py                 # PyROOT: MC-vs-data comparison plots
+├── figures/                    # output PDFs
+├── madgraph/                   # sample card generation
+└── refs/                       # reference papers (see below)
 ```
 
 ## Components
