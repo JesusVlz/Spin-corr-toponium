@@ -6,9 +6,13 @@
  * - Removed h_dphidressedleptons (particle-level)
  * - Removed h_lep_costheta_CPV
  * - Added h_cos_opening_angle_lab (opening angle in lab frame before boost)
+ * - Added full k, n, r spin quantization basis (C_kk, C_nn, C_rr)
+ * - Corrected n and r axes to match exact CMS definitions (arXiv:1907.03729)
+ * - Added individual 1D cosines for n and r axes
+ * - Added prints for mean spin correlation coefficients and uncertainties
  *
  * Usage:
- *   root -l examples/spin_corr.C'("ttbar.root","output.root")'
+ * root -l examples/spin_corr.C'("ttbar.root","output.root")'
  */
 
 #ifdef __CLING__
@@ -25,11 +29,13 @@ class ExRootResult;
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <iomanip>
 
 #include "TFile.h"
 #include "TH1D.h"
 #include "TLorentzVector.h"
 #include "TSystem.h"
+#include "TVector3.h"
 
 using namespace std;
 
@@ -122,7 +128,7 @@ void spin_corr(const char* inputFile, const char* outputFile = "ttbar_spin_outpu
     gSystem->Load("libDelphes");
 
     cout << "========================================" << endl;
-    cout << "TTbar Spin Correlation Analysis" << endl;
+    cout << "TTbar Spin Correlation Analysis (Full k, n, r Basis)" << endl;
     cout << "========================================" << endl;
     cout << "Input file: " << inputFile << endl;
     cout << "Output file: " << outputFile << endl;
@@ -155,25 +161,58 @@ void spin_corr(const char* inputFile, const char* outputFile = "ttbar_spin_outpu
         "cos(#theta_{opening}) - Top Rest Frame;cos(#theta_{opening});1/#sigma d#sigma/dcos(#theta_{opening})",
         nbins_cos_opening, bins_cos_opening);
 
-    TH1D* h_c1c2 = new TH1D("h_c1c2",
-        "c_{1}c_{2};c_{1}c_{2};1/#sigma d#sigma/d(c_{1}c_{2})",
+    TH1D* h_c_kk = new TH1D("h_c_kk",
+        "C_{kk};cos(#theta_{1}^{k})cos(#theta_{2}^{k});1/#sigma d#sigma/d(C_{kk})",
         nbins_c1c2, bins_c1c2);
 
+    TH1D* h_c_nn = new TH1D("h_c_nn",
+        "C_{nn};cos(#theta_{1}^{n})cos(#theta_{2}^{n});1/#sigma d#sigma/d(C_{nn})",
+        nbins_c1c2, bins_c1c2);
+
+    TH1D* h_c_rr = new TH1D("h_c_rr",
+        "C_{rr};cos(#theta_{1}^{r})cos(#theta_{2}^{r});1/#sigma d#sigma/d(C_{rr})",
+        nbins_c1c2, bins_c1c2);
+
+    // 1D distributions for k-axis
     TH1D* h_lep_costheta_plus = new TH1D("h_lep_costheta_plus",
-        "cos(#theta_{l});cos(#theta_{l});1/#sigma d#sigma/dcos(#theta_{l})",
+        "cos(#theta_{1}^{k});cos(#theta_{1}^{k});1/#sigma d#sigma/dcos(#theta_{1}^{k})",
         nbins_costheta, bins_costheta);
+        
     TH1D* h_lep_costheta_minus = new TH1D("h_lep_costheta_minus",
-        "cos(#theta_{l});cos(#theta_{l});1/#sigma d#sigma/dcos(#theta_{l})",
+        "cos(#theta_{2}^{k});cos(#theta_{2}^{k});1/#sigma d#sigma/dcos(#theta_{2}^{k})",
         nbins_costheta, bins_costheta);
 
-    // Set sum of weights squared for proper normalization
+    // 1D distributions for n-axis
+    TH1D* h_lep_costheta_n_plus = new TH1D("h_lep_costheta_n_plus",
+        "cos(#theta_{1}^{n});cos(#theta_{1}^{n});1/#sigma d#sigma/dcos(#theta_{1}^{n})",
+        nbins_costheta, bins_costheta);
+        
+    TH1D* h_lep_costheta_n_minus = new TH1D("h_lep_costheta_n_minus",
+        "cos(#theta_{2}^{n});cos(#theta_{2}^{n});1/#sigma d#sigma/dcos(#theta_{2}^{n})",
+        nbins_costheta, bins_costheta);
+
+    // 1D distributions for r-axis
+    TH1D* h_lep_costheta_r_plus = new TH1D("h_lep_costheta_r_plus",
+        "cos(#theta_{1}^{r});cos(#theta_{1}^{r});1/#sigma d#sigma/dcos(#theta_{1}^{r})",
+        nbins_costheta, bins_costheta);
+        
+    TH1D* h_lep_costheta_r_minus = new TH1D("h_lep_costheta_r_minus",
+        "cos(#theta_{2}^{r});cos(#theta_{2}^{r});1/#sigma d#sigma/dcos(#theta_{2}^{r})",
+        nbins_costheta, bins_costheta);
+
+    // Set sum of weights squared for proper normalization and exact mean tracking
     h_dphi->Sumw2();
     h_cos_opening_angle_lab->Sumw2();
     h_cos_opening_angle->Sumw2();
-    h_c1c2->Sumw2();
+    h_c_kk->Sumw2();
+    h_c_nn->Sumw2();
+    h_c_rr->Sumw2();
     h_lep_costheta_plus->Sumw2();
     h_lep_costheta_minus->Sumw2();
-
+    h_lep_costheta_n_plus->Sumw2();
+    h_lep_costheta_n_minus->Sumw2();
+    h_lep_costheta_r_plus->Sumw2();
+    h_lep_costheta_r_minus->Sumw2();
 
     // Counters for debugging
     int nEventsPartonLevel = 0;
@@ -263,8 +302,6 @@ void spin_corr(const char* inputFile, const char* outputFile = "ttbar_spin_outpu
                     }
 
                     // Check charge consistency: lepton should have same sign as top
-                    // For t → W+ → l+ (both positive)
-                    // For tbar → W- → l- (both negative)
                     bool chargeConsistent = (lepton_candidate->Charge * lepTop->PID > 0);
 
                     if (!isTrueLeptonicTop && chargeConsistent) {
@@ -337,31 +374,84 @@ void spin_corr(const char* inputFile, const char* outputFile = "ttbar_spin_outpu
                 lepPlus_topCM.Boost(-beta_topPlus);
                 lepMinus_topCM.Boost(-beta_topMinus);
 
-                // Calculate spin observables in top rest frames
-                TVector3 lepPlus_vec = lepPlus_topCM.Vect();
-                TVector3 lepMinus_vec = lepMinus_topCM.Vect();
-                TVector3 topPlus_vec = topPlus_p4.Vect();
-                TVector3 topMinus_vec = topMinus_p4.Vect();
+                // -------------------------------------------------------------
+                // Define the full spin quantization basis (k, n, r)
+                // Exactly matching CMS/ATLAS definitions (arXiv:1907.03729)
+                // -------------------------------------------------------------
+                TVector3 p_p(0, 0, 1); // Direction of one of the initial protons (Z-axis)
+                
+                TVector3 lepPlus_vec = lepPlus_topCM.Vect().Unit();
+                TVector3 lepMinus_vec = lepMinus_topCM.Vect().Unit();
 
-                double lepPlus_costheta = lepPlus_vec.Dot(topPlus_vec) /
-                                         (lepPlus_vec.Mag() * topPlus_vec.Mag());
+                // === TOP QUARK AXES ===
+                TVector3 k_plus = topPlus_p4.Vect().Unit(); 
+                
+                // Calculate production angle theta_t for top
+                double cos_theta_t_plus = p_p.Dot(k_plus);
+                double sin_theta_t_plus = sqrt(1.0 - cos_theta_t_plus * cos_theta_t_plus);
+                
+                // R-axis definition: (p_p - cos(theta_t)*k) / sin(theta_t)
+                TVector3 r_plus = (p_p - cos_theta_t_plus * k_plus);
+                if (sin_theta_t_plus > 1e-6) {
+                    r_plus = r_plus * (1.0 / sin_theta_t_plus);
+                }
+                r_plus = r_plus.Unit(); // Ensure normalization
 
-                double lepMinus_costheta = lepMinus_vec.Dot(topMinus_vec) /
-                                          (lepMinus_vec.Mag() * topMinus_vec.Mag());
+                // N-axis definition: k x r
+                TVector3 n_plus = k_plus.Cross(r_plus).Unit();
 
-                double c1c2 = lepPlus_costheta * lepMinus_costheta;
+                // Top lepton projections (cosines)
+                double cos_theta_k_plus = lepPlus_vec.Dot(k_plus);
+                double cos_theta_n_plus = lepPlus_vec.Dot(n_plus);
+                double cos_theta_r_plus = lepPlus_vec.Dot(r_plus);
+
+                // === ANTI-TOP QUARK AXES ===
+                TVector3 k_minus = topMinus_p4.Vect().Unit(); 
+                
+                // Calculate production angle theta_t for anti-top
+                double cos_theta_t_minus = p_p.Dot(k_minus);
+                double sin_theta_t_minus = sqrt(1.0 - cos_theta_t_minus * cos_theta_t_minus);
+                
+                // R-axis definition: (p_p - cos(theta_t)*k) / sin(theta_t)
+                TVector3 r_minus = (p_p - cos_theta_t_minus * k_minus);
+                if (sin_theta_t_minus > 1e-6) {
+                    r_minus = r_minus * (1.0 / sin_theta_t_minus);
+                }
+                r_minus = r_minus.Unit();
+
+                // N-axis definition: k x r
+                TVector3 n_minus = k_minus.Cross(r_minus).Unit();
+
+                // Anti-top lepton projections (cosines)
+                double cos_theta_k_minus = lepMinus_vec.Dot(k_minus);
+                double cos_theta_n_minus = lepMinus_vec.Dot(n_minus);
+                double cos_theta_r_minus = lepMinus_vec.Dot(r_minus);
+
+                // === SPIN CORRELATIONS (Products) ===
+                double c_kk = cos_theta_k_plus * cos_theta_k_minus;
+                double c_nn = cos_theta_n_plus * cos_theta_n_minus;
+                double c_rr = cos_theta_r_plus * cos_theta_r_minus;
 
                 // Opening angle in top rest frames (in ttbar CM frame)
-                double cos_opening_angle = lepPlus_vec.Dot(lepMinus_vec) /
-                                          (lepPlus_vec.Mag() * lepMinus_vec.Mag());
+                double cos_opening_angle = lepPlus_vec.Dot(lepMinus_vec);
 
                 // Fill histograms
                 fillWithUFOF(h_dphi, dphi_parton);
                 fillWithUFOF(h_cos_opening_angle_lab, cos_opening_angle_lab);
                 fillWithUFOF(h_cos_opening_angle, cos_opening_angle);
-                fillWithUFOF(h_c1c2, c1c2);
-                fillWithUFOF(h_lep_costheta_plus, lepPlus_costheta);
-                fillWithUFOF(h_lep_costheta_minus, lepMinus_costheta);
+                
+                fillWithUFOF(h_c_kk, c_kk);
+                fillWithUFOF(h_c_nn, c_nn);
+                fillWithUFOF(h_c_rr, c_rr);
+                
+                fillWithUFOF(h_lep_costheta_plus, cos_theta_k_plus);
+                fillWithUFOF(h_lep_costheta_minus, cos_theta_k_minus);
+
+                fillWithUFOF(h_lep_costheta_n_plus, cos_theta_n_plus);
+                fillWithUFOF(h_lep_costheta_n_minus, cos_theta_n_minus);
+
+                fillWithUFOF(h_lep_costheta_r_plus, cos_theta_r_plus);
+                fillWithUFOF(h_lep_costheta_r_minus, cos_theta_r_minus);
 
                 nEventsPartonLevel++;
             }
@@ -381,35 +471,54 @@ void spin_corr(const char* inputFile, const char* outputFile = "ttbar_spin_outpu
     cout << "Events rejected (multiple leptons): " << nRejectedMultipleLeptons << endl;
     cout << endl;
 
+    // ----------------------------------------------------------------------
+    // Print the Spin Correlation Coefficients (Mean) and their uncertainties
+    // ----------------------------------------------------------------------
+    cout << "==========================================================" << endl;
+    cout << "      SPIN CORRELATION COEFFICIENTS & UNCERTAINTIES       " << endl;
+    cout << "==========================================================" << endl;
+    cout << fixed << setprecision(5);
+    cout << "C_kk Mean (helicity axis)   : " << -9*h_c_kk->GetMean() << " +/- " << -9*h_c_kk->GetMeanError() << endl;
+    cout << "C_nn Mean (transverse axis) : " << -9*h_c_nn->GetMean() << " +/- " << -9*h_c_nn->GetMeanError() << endl;
+    cout << "C_rr Mean (orthogonal axis) : " << -9*h_c_rr->GetMean() << " +/- " << -9*h_c_rr->GetMeanError() << endl;
+    cout << "----------------------------------------------------------" << endl;
+    cout << "cos(theta_k_plus) Mean      : " << 3*h_lep_costheta_plus->GetMean() << " +/- " << 3*h_lep_costheta_plus->GetMeanError() << endl;
+    cout << "cos(theta_k_minus) Mean     : " << 3*h_lep_costheta_minus->GetMean() << " +/- " << 3*h_lep_costheta_minus->GetMeanError() << endl;
+    cout << "cos(theta_n_plus) Mean      : " << 3*h_lep_costheta_n_plus->GetMean() << " +/- " << 3*h_lep_costheta_n_plus->GetMeanError() << endl;
+    cout << "cos(theta_n_minus) Mean     : " << 3*h_lep_costheta_n_minus->GetMean() << " +/- " << 3*h_lep_costheta_n_minus->GetMeanError() << endl;
+    cout << "cos(theta_r_plus) Mean      : " << 3*h_lep_costheta_r_plus->GetMean() << " +/- " << 3*h_lep_costheta_r_plus->GetMeanError() << endl;
+    cout << "cos(theta_r_minus) Mean     : " << 3*h_lep_costheta_r_minus->GetMean() << " +/- " << 3*h_lep_costheta_r_minus->GetMeanError() << endl;
+    cout << "==========================================================" << endl;
+    cout << endl;
+ 
     // Normalize histograms to unit area
-    if (h_dphi->Integral() > 0) {
-        h_dphi->Scale(1.0 / h_dphi->Integral(), "width");
-    }
-    if (h_cos_opening_angle_lab->Integral() > 0) {
-        h_cos_opening_angle_lab->Scale(1.0 / h_cos_opening_angle_lab->Integral(), "width");
-    }
-    if (h_cos_opening_angle->Integral() > 0) {
-        h_cos_opening_angle->Scale(1.0 / h_cos_opening_angle->Integral(), "width");
-    }
-    if (h_c1c2->Integral() > 0) {
-        h_c1c2->Scale(1.0 / h_c1c2->Integral(), "width");
-    }
-    if (h_lep_costheta_plus->Integral() > 0) {
-        h_lep_costheta_plus->Scale(1.0 / h_lep_costheta_plus->Integral(), "width");
-    }
-    if (h_lep_costheta_minus->Integral() > 0) {
-        h_lep_costheta_minus->Scale(1.0 / h_lep_costheta_minus->Integral(), "width");
-    }
+    if (h_dphi->Integral() > 0) h_dphi->Scale(1.0 / h_dphi->Integral(), "width");
+    if (h_cos_opening_angle_lab->Integral() > 0) h_cos_opening_angle_lab->Scale(1.0 / h_cos_opening_angle_lab->Integral(), "width");
+    if (h_cos_opening_angle->Integral() > 0) h_cos_opening_angle->Scale(1.0 / h_cos_opening_angle->Integral(), "width");
+    if (h_c_kk->Integral() > 0) h_c_kk->Scale(1.0 / h_c_kk->Integral(), "width");
+    if (h_c_nn->Integral() > 0) h_c_nn->Scale(1.0 / h_c_nn->Integral(), "width");
+    if (h_c_rr->Integral() > 0) h_c_rr->Scale(1.0 / h_c_rr->Integral(), "width");
+    if (h_lep_costheta_plus->Integral() > 0) h_lep_costheta_plus->Scale(1.0 / h_lep_costheta_plus->Integral(), "width");
+    if (h_lep_costheta_minus->Integral() > 0) h_lep_costheta_minus->Scale(1.0 / h_lep_costheta_minus->Integral(), "width");
+    if (h_lep_costheta_n_plus->Integral() > 0) h_lep_costheta_n_plus->Scale(1.0 / h_lep_costheta_n_plus->Integral(), "width");
+    if (h_lep_costheta_n_minus->Integral() > 0) h_lep_costheta_n_minus->Scale(1.0 / h_lep_costheta_n_minus->Integral(), "width");
+    if (h_lep_costheta_r_plus->Integral() > 0) h_lep_costheta_r_plus->Scale(1.0 / h_lep_costheta_r_plus->Integral(), "width");
+    if (h_lep_costheta_r_minus->Integral() > 0) h_lep_costheta_r_minus->Scale(1.0 / h_lep_costheta_r_minus->Integral(), "width");
 
     // Save output
     TFile* outFile = new TFile(outputFile, "RECREATE");
     h_dphi->Write();
     h_cos_opening_angle_lab->Write();
     h_cos_opening_angle->Write();
-    h_c1c2->Write();
+    h_c_kk->Write();
+    h_c_nn->Write();
+    h_c_rr->Write();
     h_lep_costheta_plus->Write();
     h_lep_costheta_minus->Write();
-
+    h_lep_costheta_n_plus->Write();
+    h_lep_costheta_n_minus->Write();
+    h_lep_costheta_r_plus->Write();
+    h_lep_costheta_r_minus->Write();
 
     outFile->Close();
 
@@ -417,16 +526,4 @@ void spin_corr(const char* inputFile, const char* outputFile = "ttbar_spin_outpu
     cout << "Analysis complete!" << endl;
     cout << "Output saved to: " << outputFile << endl;
     cout << "========================================" << endl;
-    cout << endl;
-
-    // Print final statistics
-    cout << "=== Final Histogram Statistics ===" << endl;
-    cout << "h_dphi entries: " << h_dphi->GetEntries() << endl;
-    cout << "h_cos_opening_angle_lab entries: " << h_cos_opening_angle_lab->GetEntries() << endl;
-    cout << "h_cos_opening_angle entries: " << h_cos_opening_angle->GetEntries() << endl;
-    cout << "h_c1c2 entries: " << h_c1c2->GetEntries() << endl;
-    cout << "h_lep_costheta_plus entries: " << h_lep_costheta_plus->GetEntries() << endl;
-    cout << "h_lep_costheta_minus entries: " << h_lep_costheta_minus->GetEntries() << endl;
-
-    cout << endl;
 }

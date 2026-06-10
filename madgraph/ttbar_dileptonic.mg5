@@ -1,0 +1,14 @@
+import model sm
+
+define l+ = e+ mu+ ta+
+define l- = e- mu- ta-
+
+define vl  = ve vm vt
+define vl~ = ve~ vm~ vt~
+
+define p = g u c d s u~ c~ d~ s~
+define j = g u c d s u~ c~ d~ s~
+
+generate p p > t t~, (t > w+ b, w+ > l+ vl), (t~ > w- b~, w- > l- vl~)
+
+output TTbar_dilepton_13TeV -nojpeg
