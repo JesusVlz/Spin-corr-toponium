@@ -47,17 +47,18 @@ def create_ratio_graph(h_mc, h_data_graph):
             point_idx += 1
     return ratio_graph
 
-# COMMENT OUT mc4_file IN THE ARGUMENTS IF USING ONLY 3 MCs. ALSO COMMENT OUT mc3_file IF USING ONLY 2.
-def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_limits, ratio_limits):
+# COMMENT OUT mc4_file AND mc5_file IN THE ARGUMENTS IF USING ONLY 3 OR 4 MCs. ALSO COMMENT OUT mc3_file IF USING ONLY 2.
+def plot_comparison(mc1_file, mc2_file, mc3_file, mc4_file, mc5_file, config, labels, output_dir, y_limits, ratio_limits):
     mc_name, data_file_name, data_path, xtitle, ytitle = config
 
     h1 = mc1_file.Get(mc_name)
     h2 = mc2_file.Get(mc_name)
     h3 = mc3_file.Get(mc_name)  # COMMENT OUT IF USING ONLY 2 MCs
-    #h4 = mc4_file.Get(mc_name) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    h4 = mc4_file.Get(mc_name) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    h5 = mc5_file.Get(mc_name) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
 
     # Fail loud instead of segfaulting on a wrong histogram/data path.
-    if not h1 or not h2 or not h3:
+    if not h1 or not h2 or not h3 or not h4 or not h5:
         raise RuntimeError(f"Missing MC histogram '{mc_name}' in one of the input files.")
 
     f_data = ROOT.TFile.Open(data_file_name)
@@ -108,23 +109,28 @@ def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_
     h3.SetLineColor(ROOT.kRed); h3.SetLineWidth(2)
 
     # MC4 CONFIGURATION (COMMENT OUT IF USING ONLY 2 OR 3 MCs)
-    #h4.SetLineColor(ROOT.kMagenta); h4.SetLineWidth(2)
+    h4.SetLineColor(ROOT.kMagenta); h4.SetLineWidth(2)
+
+    # MC5 CONFIGURATION (COMMENT OUT IF USING ONLY 2 OR 3 MCs)
+    h5.SetLineColor(ROOT.kCyan); h5.SetLineWidth(2)
 
     h1.Draw("HIST E SAME")
     h2.Draw("HIST E SAME")
     h3.Draw("HIST E SAME")  # COMMENT OUT IF USING ONLY 2 MCs
-    #h4.Draw("HIST E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    h4.Draw("HIST E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    h5.Draw("HIST E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
 
     h_data_graph.SetMarkerStyle(20); h_data_graph.SetLineColor(ROOT.kBlack); h_data_graph.SetMarkerSize(1.2)
     h_data_graph.Draw("PE SAME")
 
-    # Legend (adjusted to fit 4 MCs + Data)
+    # Legend (adjusted to fit 5 MCs + Data)
     leg = ROOT.TLegend(0.18, 0.68, 0.41, 0.88)
     leg.AddEntry(h_data_graph, labels['data'], "ep")
     leg.AddEntry(h1, f"{labels['mc1']} ", "l")
     leg.AddEntry(h2, f"{labels['mc2']} ", "l")
     leg.AddEntry(h3, f"{labels['mc3']} ", "l")  # COMMENT OUT IF USING ONLY 2 MCs
-    #leg.AddEntry(h4, f"{labels['mc4']} (#mu={h4.GetMean():.2f})", "l") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    leg.AddEntry(h4, f"{labels['mc4']} ", "l") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    leg.AddEntry(h5, f"{labels['mc5']} ", "l") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
     leg.Draw()
     add_text_labels(pad1)
 
@@ -148,7 +154,8 @@ def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_
     ratio1 = create_ratio_graph(h1, h_data_graph)
     ratio2 = create_ratio_graph(h2, h_data_graph)
     ratio3 = create_ratio_graph(h3, h_data_graph)  # COMMENT OUT IF USING ONLY 2 MCs
-    #ratio4 = create_ratio_graph(h4, h_data_graph) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    ratio4 = create_ratio_graph(h4, h_data_graph) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    ratio5 = create_ratio_graph(h5, h_data_graph) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
 
     ratio1.SetMarkerColor(ROOT.kGreen); ratio1.SetLineColor(ROOT.kGreen); ratio1.SetMarkerStyle(25); ratio1.SetMarkerSize(1.5)
     ratio2.SetMarkerColor(ROOT.kBlue); ratio2.SetLineColor(ROOT.kBlue); ratio2.SetMarkerStyle(26); ratio2.SetMarkerSize(1.5)
@@ -157,12 +164,16 @@ def plot_comparison(mc1_file, mc2_file, mc3_file, config, labels, output_dir, y_
     ratio3.SetMarkerColor(ROOT.kRed); ratio3.SetLineColor(ROOT.kRed); ratio3.SetMarkerStyle(24); ratio3.SetMarkerSize(1.5)
 
     # MC4 RATIO (COMMENT OUT IF USING ONLY 2 OR 3 MCs)
-    #ratio4.SetMarkerColor(ROOT.kMagenta); ratio4.SetLineColor(ROOT.kMagenta); ratio4.SetMarkerStyle(23); ratio4.SetMarkerSize(1.5)
+    ratio4.SetMarkerColor(ROOT.kMagenta); ratio4.SetLineColor(ROOT.kMagenta); ratio4.SetMarkerStyle(23); ratio4.SetMarkerSize(1.5)
+
+    # MC5 RATIO (COMMENT OUT IF USING ONLY 2 OR 3 MCs)
+    ratio5.SetMarkerColor(ROOT.kCyan); ratio5.SetLineColor(ROOT.kCyan); ratio5.SetMarkerStyle(22); ratio5.SetMarkerSize(1.5)
 
     ratio1.Draw("PE SAME")
     ratio2.Draw("PE E SAME")
     ratio3.Draw("PE E SAME")  # COMMENT OUT IF USING ONLY 2 MCs
-    #ratio4.Draw("HIST E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    ratio4.Draw("PE E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    ratio5.Draw("PE E SAME") # COMMENT OUT IF USING ONLY 2 OR 3 MCs
 
     line = ROOT.TLine(x_min, 1, x_max, 1)
     line.SetLineColor(ROOT.kBlack); line.SetLineStyle(2); line.Draw()
@@ -174,7 +185,8 @@ def main():
     parser.add_argument('--f1', default='outputs/spin_corr_topponium_res_500k.root')
     parser.add_argument('--f2', default='outputs/spin_corr_topponium_full_500k.root')
     parser.add_argument('--f3', default='outputs/spin_corr_ttbar_500k.root')  # COMMENT OUT IF USING ONLY 2 MCs
-   # parser.add_argument('--f4', default='outputs/spin_corr_ttbar_madspin_test.root') # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    parser.add_argument('--f4', default='outputs/spin_corr_topThreshold1_500k.root') # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    parser.add_argument('--f5', default='outputs/spin_corr_topThreshold2_500k.root') # COMMENT OUT IF USING ONLY 2 OR 3 MCs
     parser.add_argument('--out', default='figures')
     args = parser.parse_args()
 
@@ -184,7 +196,9 @@ def main():
     f1 = ROOT.TFile.Open(args.f1)
     f2 = ROOT.TFile.Open(args.f2)
     f3 = ROOT.TFile.Open(args.f3)  # COMMENT OUT IF USING ONLY 2 MCs
-    #f4 = ROOT.TFile.Open(args.f4) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    f4 = ROOT.TFile.Open(args.f4) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    f5 = ROOT.TFile.Open(args.f5) # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+
 
     # NOTE: limits keyed by histogram name. Anything not listed falls back to the
     # default below. The C_nn / C_rr and n/r-axis ranges are PLACEHOLDERS -- tune
@@ -270,6 +284,9 @@ def main():
         'mc1': '#bf{Simplified #eta_{t}-restrict}',
         'mc2': '#bf{Simplified #eta_{t}-full}',
         'mc3': '#bf{pp #rightarrow t#bar{t} (SM)}',  # COMMENT OUT IF USING ONLY 2 MCs
+        'mc4': '#bf{TopThreshold:Coulomb enhancement}',  # COMMENT OUT IF USING ONLY 2 MCs
+        'mc5': '#bf{TopThreshold:Green\'s function}',  # COMMENT OUT IF USING ONLY 2 MCs
+
         'data': '#bf{CMS Data}'
     }
 
@@ -279,11 +296,13 @@ def main():
         r_lim = ratio_limit_map.get(name, (0.4, 1.6))
 
         # REMOVE f4 FROM HERE IF USING ONLY 3. REMOVE f3 AND f4 IF USING ONLY 2.
-        plot_comparison(f1, f2, f3, config, labels, args.out, y_lim, r_lim)
+        plot_comparison(f1, f2, f3, f4, f5, config, labels, args.out, y_lim, r_lim)
 
     f1.Close(); f2.Close()
     f3.Close()  # COMMENT OUT IF USING ONLY 2 MCs
-    #f4.Close() # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    f4.Close() # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+    f5.Close() # COMMENT OUT IF USING ONLY 2 OR 3 MCs
+
 
 if __name__ == "__main__":
     main()
