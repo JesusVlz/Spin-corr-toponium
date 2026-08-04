@@ -11,7 +11,10 @@ The flow is: generated events (LHE)→ Delphes → `spin_corr.C` (fills histogra
 ├── analysis/spin_corr.C        # ROOT/Delphes macro: event loop → spin-correlation histograms
 ├── plotting.py                 # PyROOT: MC-vs-data comparison plots
 ├── figures/                    # output PDFs
+├── notebook/                   # To apply Latex style
+├── outputs/                    # Root histograms after used spin_corr.C
 ├── madgraph/                   # sample card generation
+├── topThreshold/               # Pythia threshold model macro based on example main372 
 └── refs/                       # reference papers (see below)
 ```
 
@@ -45,3 +48,4 @@ PyROOT notebook that overlays the two MC samples (toponium signal in blue, tt̄ 
 - **[1]** — CMS, *Top polarization and tt̄ spin correlations in dilepton final states at 13 TeV* (PRD 100, 072002). Source of the data and the measured observables.
 - **[2]** — Aguilar-Saavedra, *Toponium Hunter's Guide*. Strategy + observables for a near-threshold excess.
 - **[3]** — Antozzi et al., *Extracting a Toponium Signal with Spin and Quantum Information Tools*.
+- **[4]** — Torbjörn Sjöstrand, Valery A. Khoze, Christian T. Preuss,  Top Pair Threshold Revisited. https://arxiv.org/abs/2605.19546
